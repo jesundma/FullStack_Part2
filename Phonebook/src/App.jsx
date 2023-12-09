@@ -16,12 +16,15 @@ const Form = ({ newName, newNumber, handleNameAddition, handleNumberAddition, ad
   )
 }
 
-//infomessages
+//infomessages for addition and error on deletion, style depending setMessageType state
 
-const AddedNotification = ({ message }) => {
+const Notification = ({ message, type }) => {
   const addMessageStyle = {
-    color: 'green',
-    fontSize: 16
+    color: type === 'success' ? 'green' : 'red',
+    fontSize: 20,
+    backgroundColor: 'lightgrey',
+    border: type === 'success' ? '2px solid green' : '2px solid red',
+    padding: '10 px'
   }
 
   if (!message) {
@@ -30,7 +33,9 @@ const AddedNotification = ({ message }) => {
 
   return (
     <div style = {addMessageStyle}>
+      <p>
       {message}
+      </p>
     </div>
   )
 }
@@ -39,7 +44,7 @@ const AddedNotification = ({ message }) => {
 
 const fetchData = (setPersons) => {
   axios
-    .get('http://localhost:3000/api/persons')
+    .get('http://localhost:3000/persons')
     .then(response => {
       setPersons(response.data);
     })
@@ -47,7 +52,7 @@ const fetchData = (setPersons) => {
 
 // deleting and adding names
 
-const AddName = (persons, setPersons, newName, newNumber, setNewName, setNewNumber, setAddSuccessful) => (event) => {
+const AddName = (persons, setPersons, newName, newNumber, setNewName, setDeleteSuccessful, setNewNumber, setAddSuccessful) => (event) => {
   event.preventDefault()
   const personObject = {
     name: newName, 
@@ -57,18 +62,23 @@ const AddName = (persons, setPersons, newName, newNumber, setNewName, setNewNumb
   const indexForPerson = persons.findIndex((p) => p.name === personObject.name);
 
     if (indexForPerson !== -1) {
-      if(window.confirm(`${newName} is already added to phonebook, replace the old number with new one?`)) {
-        axios
-          .put(`http://localhost:3001/persons/${persons[indexForPerson].id}`, {
-          name: newName,  
-          number: newNumber
-          })
-          fetchData(setPersons)
+      try {
+        if(window.confirm(`${newName} is already added to phonebook, replace the old number with new one?`)) {
+          axios
+            .put(`http://localhost:3000/persons/${persons[indexForPerson].id}`, {
+            name: newName,  
+            number: newNumber
+            })
+            fetchData(setPersons)
+        }
+      } catch {
+        setDeleteSuccessful(false)
+        console.log(deleteSuccessful)
       }
       setAddSuccessful(true)
     } else {
       axios
-        .post('http://localhost:3001/persons', personObject)
+        .post('http://localhost:3000/persons', personObject)
         .then(response => {
           setPersons(persons.concat(response.data))
           setAddSuccessful(true)
@@ -78,16 +88,18 @@ const AddName = (persons, setPersons, newName, newNumber, setNewName, setNewNumb
 
 }
 
-const DeleteName = (id, name, statePersons) => {
-  
+const DeleteName = (id, name, statePersons, setDeleteSuccessful) => {
+   
   if (window.confirm(`${name} delete`)) {
     axios
-      .delete(`http://localhost:3001/persons/${id}`)
+      .delete(`http://localhost:3000/persons/${id}`)
       .then(response => {
-        fetchData(statePersons)
-      })
+      fetchData(statePersons)
+    })
+      .catch(error => {
+        setDeleteSuccessful(false)  
+    })
   }
-
 }
 
 // filters and presenting data
@@ -111,7 +123,7 @@ const PresentData = ({persons, filter, statePersons}) => {
           {personsFiltered.name} {personsFiltered.number} <button onClick={() => DeleteName(personsFiltered.id, personsFiltered.name, statePersons)}>Delete</button>
           </li>
         )}
-      </ul>
+    </ul>
   )}
   catch(err) {
     return
@@ -127,6 +139,8 @@ const App = () => {
   const [newNumber, setNewNumber] = useState('')
   const [showAll, setShowAll] = useState('')
   const [addSuccessful, setAddSuccessful] = useState(false)
+  const [deleteSuccessful, setDeleteSuccessful] = useState(true)
+  const [messageType, setMessageType] = useState(null)
   const [notificationMessage, setNotificationMessage] = useState(null)
 
 // refresh data
@@ -139,9 +153,11 @@ const App = () => {
 
   useEffect(() => {
     if (addSuccessful) {
-      setNotificationMessage(`${newName} add here`)
+      setMessageType('success')
+      setNotificationMessage(`Add ${newName}`)
   
       const timerForInfo = setTimeout(() => {
+        setMessageType(null)
         setNotificationMessage(null)
         setAddSuccessful(false)
         setNewName('')
@@ -152,6 +168,25 @@ const App = () => {
       }
     }
   }, [addSuccessful, newName])
+
+// info message for error in deletion for 2 secongs
+
+  useEffect(() => {
+  if (deleteSuccessful === false) {
+    setMessageType('error')
+    setNotificationMessage(`Delete not ok`)
+
+    const timerForInfo = setTimeout(() => {
+      setMessageType(null)
+      setNotificationMessage(null)
+      setDeleteSuccessful(true)
+    }, 2000)
+
+    return () => {
+      clearTimeout(timerForInfo)
+    }
+  }
+}, [deleteSuccessful])
 
   // Event handlers
 
@@ -172,7 +207,10 @@ const App = () => {
   return (
     <div>
       <h2>Phonebook</h2>
-      <AddedNotification message={notificationMessage} />
+      <div>
+      <Notification message={notificationMessage} type={messageType ? 'success' : 'error'} />
+      <br />
+      </div>
       <div>Filter shown with: <input value={showAll} onChange= {handleFilterChange}/></div>
       <h3>Add a new</h3>
       <Form
@@ -181,7 +219,7 @@ const App = () => {
         handleNameAddition={handleNameAddition}
         handleNumberAddition={handleNumberAddition}
         handleFilterChange={handleFilterChange}
-        addName={AddName(persons, setPersons, newName, newNumber, setNewName, setNewNumber, setAddSuccessful)}
+        addName={AddName(persons, setPersons, newName, newNumber, setDeleteSuccessful, setNewName, setNewNumber, setAddSuccessful)}
       />
       <h2>Numbers</h2>
         <PresentData persons = {persons} filter= {showAll} statePersons = {setPersons}/>

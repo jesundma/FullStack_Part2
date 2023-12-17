@@ -1,231 +1,118 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+//serverCommunication is for all correspondance between front-end and server
+import serverCommunication from './components/serverCommunication'
 
-
-// Form for adding and deleting persons
-
-const Form = ({ newName, newNumber, handleNameAddition, handleNumberAddition, addName }) => {
+// component for UI filtering functionality
+const Filter = ({ filterString, handleFilterChange }) => {
   return (
-    <form onSubmit={addName}>
-      <div>Name: <input value={newName} onChange={handleNameAddition} /></div>
-      <div>Number: <input value={newNumber} onChange={handleNumberAddition} /></div>
+    <div>
+      Filter shown with: <input value={filterString} onChange={handleFilterChange} />
+    </div>
+  )
+}
+
+// component to conditionally present notification for failed delete
+const FailedDeleteNotification = ( {deleteSuccessful, setDeleteSuccessful} ) => {
+  const addMessageStyle = {
+    color: 'red',
+    fontSize: 20,
+    backgroundColor: 'lightgrey',
+    border: '2px solid red',
+    padding: '10 px'
+  }
+
+  return deleteSuccessful !== null ? (
+    <p style = {addMessageStyle}>
+      {deleteSuccessful}
+    </p>
+  ) : null
+}
+
+// component for UI adding person
+const PersonForm = ({ addPerson, newName, handleNameAddition, newNumber, handleNumberAddition }) => {
+  return (
+    <form onSubmit={addPerson}>
       <div>
-        <button type="submit">Add</button>
+        name: <input value={newName} onChange={handleNameAddition} />
+        <br />
+        number: <input value={newNumber} onChange={handleNumberAddition} />
+      </div>
+      <div>
+        <button type="submit">add</button>
       </div>
     </form>
   )
 }
 
-//infomessages for addition and error on deletion, style depending setMessageType state
-
-const Notification = ({ message, type }) => {
-  const addMessageStyle = {
-    color: type === 'success' ? 'green' : 'red',
-    fontSize: 20,
-    backgroundColor: 'lightgrey',
-    border: type === 'success' ? '2px solid green' : '2px solid red',
-    padding: '10 px'
-  }
-
-  if (!message) {
-    return null
-  }
-
-  return (
-    <div style = {addMessageStyle}>
-      <p>
-      {message}
-      </p>
-    </div>
+// component for presenting persons in UI
+const PresentPersons = ({ persons, filterString, setPersons, setDeleteSuccessful }) => {
+  const filteredPersons = persons.filter((person) =>
+    person.name.toLowerCase().includes(filterString.toLowerCase())
   )
-}
-
-// component for mounting data and refresh
-
-const fetchData = (setPersons) => {
-  axios
-    .get('http://localhost:3000/persons')
-    .then(response => {
-      setPersons(response.data);
-    })
-}
-
-// deleting and adding names
-
-const AddName = (persons, setPersons, newName, newNumber, setNewName, setDeleteSuccessful, setNewNumber, setAddSuccessful) => (event) => {
-  event.preventDefault()
-  const personObject = {
-    name: newName, 
-    number: newNumber,
-  }
-  
-  const indexForPerson = persons.findIndex((p) => p.name === personObject.name);
-
-    if (indexForPerson !== -1) {
-      try {
-        if(window.confirm(`${newName} is already added to phonebook, replace the old number with new one?`)) {
-          axios
-            .put(`http://localhost:3000/persons/${persons[indexForPerson].id}`, {
-            name: newName,  
-            number: newNumber
-            })
-            fetchData(setPersons)
-        }
-      } catch {
-        setDeleteSuccessful(false)
-        console.log(deleteSuccessful)
-      }
-      setAddSuccessful(true)
-    } else {
-      axios
-        .post('http://localhost:3000/persons', personObject)
-        .then(response => {
-          setPersons(persons.concat(response.data))
-          setAddSuccessful(true)
-        })
-    }
-  setNewNumber('')
-
-}
-
-const DeleteName = (id, name, statePersons, setDeleteSuccessful) => {
-   
-  if (window.confirm(`${name} delete`)) {
-    axios
-      .delete(`http://localhost:3000/persons/${id}`)
-      .then(response => {
-      fetchData(statePersons)
-    })
-      .catch(error => {
-        setDeleteSuccessful(false)  
-    })
-  }
-}
-
-// filters and presenting data
-
-const FilterData = (persons, filter) => {
-  
-  return persons.filter(person => person.name.toLowerCase().includes(filter.toLowerCase()))
-
-}
-
-const PresentData = ({persons, filter, statePersons}) => {
-
-  try {
-
-  const personsFiltered = FilterData(persons, filter)
 
   return (
     <ul>
-        {personsFiltered.map(personsFiltered => 
-          <li key={personsFiltered.id}>
-          {personsFiltered.name} {personsFiltered.number} <button onClick={() => DeleteName(personsFiltered.id, personsFiltered.name, statePersons)}>Delete</button>
-          </li>
-        )}
+      {filteredPersons.map((person) => (
+        <li key={person.id}>
+          {person.name} {person.number} <button onClick={() => serverCommunication.deletePerson(person.id, person.name, setPersons, setDeleteSuccessful)}>Delete</button>
+        </li>
+      ))}
     </ul>
-  )}
-  catch(err) {
-    return
-  }
+  )
 }
 
 const App = () => {
 
-  // Effects and states
+//states and effects
 
-  const [persons, setPersons] = useState()
+  const [persons, setPersons] = useState([
+    { name: 'Arto Hellas', number: '040-123456', id: 1 },
+    { name: 'Ada Lovelace', number: '39-44-5323523', id: 2 },
+    { name: 'Dan Abramov', number: '12-43-234345', id: 3 },
+    { name: 'Mary Poppendieck', number: '39-23-6423122', id: 4 }
+  ])
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
-  const [showAll, setShowAll] = useState('')
-  const [addSuccessful, setAddSuccessful] = useState(false)
-  const [deleteSuccessful, setDeleteSuccessful] = useState(true)
-  const [messageType, setMessageType] = useState(null)
-  const [notificationMessage, setNotificationMessage] = useState(null)
-
-// refresh data
+  const [filterString, setFilter] = useState('')
+  const [deleteSuccessful, setDeleteSuccessful] = useState(null)
+  const [addSuccessful, setAddSuccessful] = useState(null)
 
   useEffect(() => {
-    fetchData(setPersons)
+    serverCommunication.fetchData(setPersons)
   }, [])
 
-// info message on add for 2 seconds
-
-  useEffect(() => {
-    if (addSuccessful) {
-      setMessageType('success')
-      setNotificationMessage(`Add ${newName}`)
-  
-      const timerForInfo = setTimeout(() => {
-        setMessageType(null)
-        setNotificationMessage(null)
-        setAddSuccessful(false)
-        setNewName('')
-      }, 2000)
-  
-      return () => {
-        clearTimeout(timerForInfo)
-      }
-    }
-  }, [addSuccessful, newName])
-
-// info message for error in deletion for 2 secongs
-
-  useEffect(() => {
-  if (deleteSuccessful === false) {
-    setMessageType('error')
-    setNotificationMessage(`Delete not ok`)
-
-    const timerForInfo = setTimeout(() => {
-      setMessageType(null)
-      setNotificationMessage(null)
-      setDeleteSuccessful(true)
-    }, 2000)
-
-    return () => {
-      clearTimeout(timerForInfo)
-    }
-  }
-}, [deleteSuccessful])
-
-  // Event handlers
-
+  //handles
   const handleNameAddition = (event) => {
     setNewName(event.target.value)
   }
-
   const handleNumberAddition = (event) => {
     setNewNumber(event.target.value)
   }
-
   const handleFilterChange = (event) => {
-    setShowAll(event.target.value)
+    setFilter(event.target.value)
   }
 
-  // Web page
+  const handleAddPerson = (event) => {
+    event.preventDefault();
+    serverCommunication.addPerson(newName, newNumber, persons, setPersons, setNewName, setNewNumber);
+  }
 
   return (
     <div>
       <h2>Phonebook</h2>
-      <div>
-      <Notification message={notificationMessage} type={messageType ? 'success' : 'error'} />
-      <br />
-      </div>
-      <div>Filter shown with: <input value={showAll} onChange= {handleFilterChange}/></div>
-      <h3>Add a new</h3>
-      <Form
+      <FailedDeleteNotification deleteSuccessful={deleteSuccessful} />
+      <Filter filterString={filterString} handleFilterChange={handleFilterChange} />
+      <PersonForm
+        addPerson={handleAddPerson}
         newName={newName}
-        newNumber={newNumber}
         handleNameAddition={handleNameAddition}
+        newNumber={newNumber}
         handleNumberAddition={handleNumberAddition}
-        handleFilterChange={handleFilterChange}
-        addName={AddName(persons, setPersons, newName, newNumber, setDeleteSuccessful, setNewName, setNewNumber, setAddSuccessful)}
       />
       <h2>Numbers</h2>
-        <PresentData persons = {persons} filter= {showAll} statePersons = {setPersons}/>
+      <PresentPersons persons={persons} filterString={filterString} setPersons={setPersons} setDeleteSuccessful={setDeleteSuccessful} />
     </div>
   )
-
 }
 
 export default App

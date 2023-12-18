@@ -10,7 +10,7 @@ const fetchData = (setPersons) => {
 }
 
 // function for verifying that person not already added, to add person, and new number for existing person 
-const addPerson = (newName, newNumber, persons, setPersons, setNewName, setNewNumber) => {
+const addPerson = (newName, newNumber, persons, setPersons, setNewName, setNewNumber, addSuccessful, setAddSuccessful) => {
     event.preventDefault()
     const personObject = {
       name: newName,
@@ -27,6 +27,10 @@ const addPerson = (newName, newNumber, persons, setPersons, setNewName, setNewNu
           .then(response => {
             setPersons(persons.map(person => person.id !== changeNewNumber.id ? person : response.data))
             fetchData(setPersons)
+            setAddSuccessful(`Added ${newName}`)
+            setTimeout(() => {
+              setAddSuccessful(null);
+            }, 3000)
           })
       }
     } else {
@@ -34,6 +38,11 @@ const addPerson = (newName, newNumber, persons, setPersons, setNewName, setNewNu
         .post('http://localhost:3001/persons', personObject)
         .then(response => {
           setPersons(persons.concat(response.data))
+          setAddSuccessful(`Added ${newName}`)
+          setTimeout(() => {
+            setAddSuccessful(null);
+          }, 3000)
+
         })
     }
   

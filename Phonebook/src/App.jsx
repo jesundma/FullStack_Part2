@@ -12,7 +12,7 @@ const Filter = ({ filterString, handleFilterChange }) => {
 }
 
 // component to conditionally present notification for failed delete
-const FailedDeleteNotification = ( {deleteSuccessful, setDeleteSuccessful} ) => {
+const FailedDeleteNotification = ( {deleteSuccessful} ) => {
   const addMessageStyle = {
     color: 'red',
     fontSize: 20,
@@ -24,6 +24,24 @@ const FailedDeleteNotification = ( {deleteSuccessful, setDeleteSuccessful} ) => 
   return deleteSuccessful !== null ? (
     <p style = {addMessageStyle}>
       {deleteSuccessful}
+    </p>
+  ) : null
+}
+
+// component to conditinally present notification for successful additon of person
+
+const SuccessfulAdditionNotifation = ( {addSuccessful} ) => {
+  const addMessageStyle = {
+    color: 'green',
+    fontSize: 20,
+    backgroundColor: 'lightgrey',
+    border: '2px solid green',
+    padding: '10 px'
+  }
+
+  return addSuccessful !== null ? (
+    <p style = {addMessageStyle}>
+      {addSuccessful}
     </p>
   ) : null
 }
@@ -49,7 +67,7 @@ const PresentPersons = ({ persons, filterString, setPersons, setDeleteSuccessful
   const filteredPersons = persons.filter((person) =>
     person.name.toLowerCase().includes(filterString.toLowerCase())
   )
-
+  
   return (
     <ul>
       {filteredPersons.map((person) => (
@@ -61,16 +79,12 @@ const PresentPersons = ({ persons, filterString, setPersons, setDeleteSuccessful
   )
 }
 
+
 const App = () => {
 
 //states and effects
 
-  const [persons, setPersons] = useState([
-    { name: 'Arto Hellas', number: '040-123456', id: 1 },
-    { name: 'Ada Lovelace', number: '39-44-5323523', id: 2 },
-    { name: 'Dan Abramov', number: '12-43-234345', id: 3 },
-    { name: 'Mary Poppendieck', number: '39-23-6423122', id: 4 }
-  ])
+  const [persons, setPersons] = useState(null)
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
   const [filterString, setFilter] = useState('')
@@ -80,6 +94,10 @@ const App = () => {
   useEffect(() => {
     serverCommunication.fetchData(setPersons)
   }, [])
+
+  if (!persons) { 
+    return null 
+  }
 
   //handles
   const handleNameAddition = (event) => {
@@ -94,13 +112,14 @@ const App = () => {
 
   const handleAddPerson = (event) => {
     event.preventDefault();
-    serverCommunication.addPerson(newName, newNumber, persons, setPersons, setNewName, setNewNumber);
+    serverCommunication.addPerson(newName, newNumber, persons, setPersons, setNewName, setNewNumber, addSuccessful, setAddSuccessful);
   }
 
   return (
     <div>
       <h2>Phonebook</h2>
       <FailedDeleteNotification deleteSuccessful={deleteSuccessful} />
+      <SuccessfulAdditionNotifation addSuccessful={addSuccessful} />
       <Filter filterString={filterString} handleFilterChange={handleFilterChange} />
       <PersonForm
         addPerson={handleAddPerson}
@@ -108,6 +127,8 @@ const App = () => {
         handleNameAddition={handleNameAddition}
         newNumber={newNumber}
         handleNumberAddition={handleNumberAddition}
+        addSuccessful={addSuccessful}
+        setAddSuccessful={setAddSuccessful}
       />
       <h2>Numbers</h2>
       <PresentPersons persons={persons} filterString={filterString} setPersons={setPersons} setDeleteSuccessful={setDeleteSuccessful} />

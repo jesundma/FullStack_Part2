@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 
-//const api_key_Weather = import.meta.env.WEATHER_KEY, api key in env but undefined when added to call as template literal
-//console.log(api_key_Weather)
+const api_key_Weather = import.meta.env.WEATHER_KEY //api key in env but works occasionally ...
 
 // component to present country data
 
-const PresentData = ({ countries, filter, setCoordinates, setCapital, country, setCountry }) => {
+const PresentData = ({ countries, filter, setCoordinates, setCapital }) => {
 
   if (countries.length === 0) {
     return
@@ -33,13 +32,13 @@ const PresentData = ({ countries, filter, setCoordinates, setCapital, country, s
     }
     if (countryFilter.length > 1) {
       return (
-        <ul>
-          {countryFilter.map((countrySelect, index) => (
-            <li key={index}>
+        <div>
+          {countryFilter.map((countrySelect) => (
+            <li key={countrySelect.name.common}>
               {countrySelect.name.common} <button>show</button>
             </li>
           ))}
-        </ul>
+        </div>
       )} else if (countryFilter.length === 1) {
       
         const resultCountry = countryFilter[0]
@@ -56,8 +55,8 @@ const PresentData = ({ countries, filter, setCoordinates, setCapital, country, s
             languages:
           </p>
           <ul>
-            {languages.map((language)=> (
-              <li>
+            {languages.map((language, index)=> (
+              <li key={index}>
                 {language}
               </li>
             ))}
@@ -105,7 +104,6 @@ function App() {
   const [countries, setCountries] = useState([])
   const [filterString, setFilterString] = useState('')
   const [coordinates, setCoordinates] = useState(null) // set capital coordinates when country is selected
-  const [country, setCountry] = useState(null) // set country either by narrowing to one result or by selecting
   const [capital, setCapital] = useState(null) //set (lock) country capital when country selected
   const [weather, setWeather] = useState(null) // effect when country capital coordinates are set
 
@@ -117,7 +115,7 @@ function App() {
   )
   useEffect(() => {
     if(coordinates) {
-      axios.get(`https://api.openweathermap.org/data/2.5/weather?lat=${coordinates[0]}&lon=${coordinates[1]}&appid=6ed6cf961d8fb39be725f80e53f09adc`)
+      axios.get(`https://api.openweathermap.org/data/2.5/weather?lat=${coordinates[0]}&lon=${coordinates[1]}&appid=${api_key_Weather}`)
         .then((response) => {
           setWeather(response.data);
         })
@@ -134,7 +132,7 @@ function App() {
   return (
     <div>
       <div>Find country: <input value={filterString} onChange= {handleFilterChange}/></div>
-      <div><PresentData countries= {countries} filter= {filterString} setCoordinates= {setCoordinates} setCapital= {setCapital} country= {country} setCountry= {setCountry}/></div>
+      <div><PresentData countries= {countries} filter= {filterString} setCoordinates= {setCoordinates} setCapital= {setCapital}/></div>
       {capital !== null ? <div><PresentWeather weather={weather} capital={capital} /></div> : <div></div>}</div>
     )
 }
